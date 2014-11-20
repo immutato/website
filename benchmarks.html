@@ -68,6 +68,9 @@
     (function() {
         var results = document.querySelector('.results');
         var output = {};
+        Object.keys(window['all-benchmarks']).forEach(function(suiteSlug){
+            benchmarkSuite(window['all-benchmarks'][suiteSlug]);
+        });
 
         function _log(msg, style) {
             var result = document.createElement('li');
@@ -123,99 +126,102 @@
 
         }
 
-        var suite = new Benchmark.Suite(suite1.name);
+        function benchmarkSuite(suite1) {
+            var suite = new Benchmark.Suite(suite1.name);
 
-        Object.keys(suite1.tests).forEach(function(testName) {
-            suite.add(testName, suite1.tests[testName]);
-        });
+            Object.keys(suite1.tests).forEach(function(testName) {
+                suite.add(testName, suite1.tests[testName]);
+            });
 
-        logStart('suite ' + suite1.name);
+            logStart('suite ' + suite1.name);
 
-        // Add test complete listeners
-        suite.on('cycle', function(event) {
-            var target = event.target || this;
+            // Add test complete listeners
+            suite.on('cycle', function(event) {
+                var target = event.target || this;
 
-            if (!target.error) {
-                _logSuccess('   ' + target);
-            }
-            target.suite = suite1.name;
-            _writeResults(target);
-        });
+                if (!target.error) {
+                    _logSuccess('   ' + target);
+                }
+                target.suite = suite1.name;
+                _writeResults(target);
+            });
 
-        suite.on('complete', function() {
-            if (!this.error) {
-                // Get the tests
-                var tests = _.sortBy(this, 'hz');
+            suite.on('complete', function() {
+                if (!this.error) {
+                    // Get the tests
+                    var tests = _.sortBy(this, 'hz');
 
-                // Get the top fastest tests
-                var fastestTests = Benchmark.filter(this, 'fastest');
+                    // Get the top fastest tests
+                    var fastestTests = Benchmark.filter(this, 'fastest');
 
-                // Only bother if more than one test
-                if (tests.length <= 1) {
-                    return;
+                    // Only bother if more than one test
+                    if (tests.length <= 1) {
+                        return;
+                    }
+
+                    // Get the testest test
+                    var fastest = fastestTests[0];
+
+                    // Extract their names
+                    var fastestNames = Benchmark.pluck(fastestTests, 'name');
+
+                    // Get the second fastest
+                    var secondFastestTests;
+                    var secondFastest;
+                    var secondFastestNames;
+                    if (fastestTests.length > 1) {
+                        secondFastestTests = Benchmark.filter(fastestTests.slice(1), 'fastest');
+                        secondFastest = secondFastestTests[0];
+                        secondFastestNames = Benchmark.pluck(secondFastestTests, 'name');
+                    } else {
+                        var slowerTests = _.reject(tests, function(obj) {
+                            return ~fastestNames.indexOf(obj.name);
+                        });
+                        secondFastestTests = Benchmark.filter(slowerTests, 'fastest').reverse();
+                        secondFastest = secondFastestTests[0];
+                        secondFastestNames = Benchmark.pluck(secondFastestTests, 'name');
+                    }
+
+                    // Calculate how much faster the fastest functions were than the second fastest
+                    var timesFaster = (fastest.hz / secondFastest.hz);
+
+                    var isAre = 'test is';
+                    if (fastestTests.length > 1) {
+                        isAre = 'tests are';
+                    }
+
+                    var message = 'Fastest ' + isAre + ' ' + [fastestNames].join(' and ');
+
+                    var decimalPlaces = timesFaster < 2 ? 2 : 1;
+
+                    // Only bother if there wasn't a tie
+                    if (fastestTests.length !== tests.length) {
+                        message += ' at ' + Benchmark.formatNumber(timesFaster.toFixed(decimalPlaces)) + 'x faster than ' + secondFastestNames.join(' and ');
+                    }
+
+                    _logInfo(message);
+                }
+            });
+
+            suite.on('error', function(event) {
+                var target = event.target;
+                _logErr('Error running test ' + target.name + ': ' + target.error);
+            });
+
+            suite.on('complete', function() {
+                // Catch errors
+                if (this.error) {
+                    _logErr(this.error);
                 }
 
-                // Get the testest test
-                var fastest = fastestTests[0];
 
-                // Extract their names
-                var fastestNames = Benchmark.pluck(fastestTests, 'name');
+            });
 
-                // Get the second fastest
-                var secondFastestTests;
-                var secondFastest;
-                var secondFastestNames;
-                if (fastestTests.length > 1) {
-                    secondFastestTests = Benchmark.filter(fastestTests.slice(1), 'fastest');
-                    secondFastest = secondFastestTests[0];
-                    secondFastestNames = Benchmark.pluck(secondFastestTests, 'name');
-                } else {
-                    var slowerTests = _.reject(tests, function(obj) {
-                        return ~fastestNames.indexOf(obj.name);
-                    });
-                    secondFastestTests = Benchmark.filter(slowerTests, 'fastest').reverse();
-                    secondFastest = secondFastestTests[0];
-                    secondFastestNames = Benchmark.pluck(secondFastestTests, 'name');
-                }
+            suite.run({
+                'async': false
+            });
+        }
 
-                // Calculate how much faster the fastest functions were than the second fastest
-                var timesFaster = (fastest.hz / secondFastest.hz);
-
-                var isAre = 'test is';
-                if (fastestTests.length > 1) {
-                    isAre = 'tests are';
-                }
-
-                var message = 'Fastest ' + isAre + ' ' + [fastestNames].join(' and ');
-
-                var decimalPlaces = timesFaster < 2 ? 2 : 1;
-
-                // Only bother if there wasn't a tie
-                if (fastestTests.length !== tests.length) {
-                    message += ' at ' + Benchmark.formatNumber(timesFaster.toFixed(decimalPlaces)) + 'x faster than ' + secondFastestNames.join(' and ');
-                }
-
-                _logInfo(message);
-            }
-        });
-
-        suite.on('error', function(event) {
-            var target = event.target;
-            _logErr('Error running test ' + target.name + ': ' + target.error);
-        });
-
-        suite.on('complete', function() {
-            // Catch errors
-            if (this.error) {
-                _logErr(this.error);
-            }
-
-            
-        });
-
-        suite.run({
-            'async': false
-        });
 
     })();
     </script>
