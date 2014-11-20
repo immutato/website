@@ -28,7 +28,7 @@
             module.exports = __external_immutato_prev;
         },
         function (module, exports) {
-            module.exports = { 'current_vs_prev_vs_pojo-change_bench': _require(2) };
+            module.exports = { 'current_vs_prev_vs_pojo-read_after_multiple_changes_bench': _require(2) };
         },
         function (module, exports) {
             'use strict';
@@ -54,30 +54,38 @@
                         }
                         var Imm = immutato_prev.struct(payloadTypes, 'Person');
                         var $f = immutato(payloadProps);
-                        suite.immJs = Immutable.Map(suite.payloadProps);
                         suite.immPrev = new Imm(payloadProps);
                         suite.immCurr = $f(payloadProps);
-                        suite.pojo = {
-                            name: 'Andrea',
-                            age: 38
-                        };
+                        suite.pojo = assign({}, payloadProps);
+                        suite.immJs = Immutable.Map(payloadProps);
                         Object.freeze(suite.pojo);
+                        var pojoCounter = 0;
+                        var prevCounter = 0;
+                        var currCounter = 0;
+                        var immJsCounter = 0;
+                        var iterations = 10000;
+                        while (iterations--) {
+                            suite.immCurr = suite.immCurr.age(iterations);
+                            suite.immPrev = suite.immPrev.set('age', iterations);
+                            suite.immJs = suite.immJs.set('age', iterations);
+                            suite.pojo = assign({}, suite.pojo);
+                            suite.pojo.age = iterations;
+                            Object.freeze(suite.pojo);
+                        }
                     },
-                    name: 'current vs prev version vs pojo -- create a copy of immutable object with changed property',
+                    name: 'current vs prev version vs pojo -- read property after multiple changes',
                     tests: {
                         'current version': function () {
-                            suite.immCurr.age(42);
+                            var name = suite.immCurr.name();
                         },
                         'immutable.js': function () {
-                            suite.immJs.set('age', 42);
+                            var name = suite.immJs.get('name');
                         },
                         'previous version': function () {
-                            suite.immPrev.set('age', 42);
+                            var name = suite.immPrev.name;
                         },
                         'pojo': function () {
-                            var copy = assign({}, suite.pojo);
-                            copy.age = 42;
-                            Object.freeze(copy);
+                            var name = suite.pojo.name;
                         }
                     }
                 };
