@@ -28,14 +28,20 @@
             module.exports = __external_immutato_prev;
         },
         function (module, exports) {
-            module.exports = { 'current_vs_prev_vs_pojo-read_after_multiple_changes_bench': _require(2) };
+            module.exports = {
+                'current_vs_prev_vs_pojo-change_bench': _require(2),
+                'current_vs_prev_vs_pojo-creation_bench': _require(3),
+                'current_vs_prev_vs_pojo-multiple_changes_bench': _require(4),
+                'current_vs_prev_vs_pojo-read_after_multiple_changes_bench': _require(5)
+            };
         },
         function (module, exports) {
             'use strict';
-            var assign = _require(5);
+            var assign = _require(17);
             var immutato_prev = _require(0);
-            var immutato = _require(3);
-            var Immutable = _require(4);
+            var immutato = _require(6);
+            var Immutable = _require(16);
+            var AO = _require(10);
             var suite = module.exports = {
                     maxTime: 2,
                     setup: function () {
@@ -54,6 +60,188 @@
                         }
                         var Imm = immutato_prev.struct(payloadTypes, 'Person');
                         var $f = immutato(payloadProps);
+                        suite.oak = AO(payloadProps);
+                        suite.immJs = Immutable.Map(payloadProps);
+                        suite.immPrev = new Imm(payloadProps);
+                        suite.immCurr = $f(payloadProps);
+                        suite.pojo = {
+                            name: 'Andrea',
+                            age: 38
+                        };
+                        Object.freeze(suite.pojo);
+                    },
+                    name: 'current vs prev version vs pojo -- create a copy of immutable object with changed property',
+                    tests: {
+                        'current version': {
+                            fn: function () {
+                                suite.immCurr.age(42);
+                            },
+                            onComplete: function () {
+                                suite.immCurr.dispose();
+                            }
+                        },
+                        'immutable.js': function () {
+                            suite.immJs.set('age', 42);
+                        },
+                        'ancient-oak': function () {
+                            suite.oak.set('age', 42);
+                        },
+                        'previous version': function () {
+                            suite.immPrev.set('age', 42);
+                        },
+                        'pojo': function () {
+                            var copy = assign({}, suite.pojo);
+                            copy.age = 42;
+                            Object.freeze(copy);
+                        }
+                    }
+                };
+            suite.setup();
+        },
+        function (module, exports) {
+            'use strict';
+            var immutato_prev = _require(0);
+            var immutato = _require(6);
+            var Immutable = _require(16);
+            var AO = _require(10);
+            var suite = module.exports = {
+                    maxTime: 2,
+                    setup: function () {
+                        var i = 100;
+                        var payloadTypes = {
+                                name: immutato_prev.String,
+                                age: immutato_prev.Number
+                            };
+                        var payloadProps = {
+                                name: 'Andrea',
+                                age: 38
+                            };
+                        while (i--) {
+                            payloadTypes['field' + i] = immutato_prev.Number;
+                            payloadProps['field' + i] = i;
+                        }
+                        suite.payloadProps = payloadProps;
+                        suite.Imm = immutato_prev.struct(payloadTypes, 'Person');
+                        suite.$f = immutato(payloadProps);
+                    },
+                    name: 'current vs prev version vs pojo -- immutable object creation',
+                    tests: {
+                        'current version': function () {
+                            var imm = suite.$f(suite.payloadProps);
+                            imm.dispose();
+                        },
+                        'previous version': function () {
+                            var imm = new suite.Imm(suite.payloadProps);
+                        },
+                        'ancient-oak': function () {
+                            var imm = AO(suite.payloadProps);
+                        },
+                        'immutable.js': function () {
+                            var imm = Immutable.Map(suite.payloadProps);
+                        },
+                        'pojo': function () {
+                            var imm = {
+                                    name: 'Andrea',
+                                    age: 38
+                                };
+                            Object.freeze(imm);
+                        }
+                    }
+                };
+            suite.setup();
+        },
+        function (module, exports) {
+            'use strict';
+            var assign = _require(17);
+            var immutato_prev = _require(0);
+            var immutato = _require(6);
+            var Immutable = _require(16);
+            var AO = _require(10);
+            var suite = module.exports = {
+                    maxTime: 2,
+                    setup: function () {
+                        var i = 100;
+                        var payloadTypes = {
+                                name: immutato_prev.String,
+                                age: immutato_prev.Number
+                            };
+                        var payloadProps = {
+                                name: 'Andrea',
+                                age: 38
+                            };
+                        while (i--) {
+                            payloadTypes['field' + i] = immutato_prev.Number;
+                            payloadProps['field' + i] = i;
+                        }
+                        suite.payloadProps = payloadProps;
+                        var Imm = immutato_prev.struct(payloadTypes, 'Person');
+                        var $f = immutato(suite.payloadProps);
+                        suite.immPrev = new Imm(payloadProps);
+                        suite.immCurr = $f(payloadProps);
+                        suite.immJs = Immutable.Map(payloadProps);
+                        suite.oak = AO(payloadProps);
+                        suite.pojo = payloadProps;
+                        suite.oakCounter = 0;
+                        suite.pojoCounter = 0;
+                        suite.prevCounter = 0;
+                        suite.currCounter = 0;
+                        suite.immJsCounter = 0;
+                        Object.freeze(suite.pojo);
+                    },
+                    name: 'current vs prev version vs pojo -- change properties multiple times',
+                    tests: {
+                        'current version': {
+                            fn: function () {
+                                suite.immCurr = suite.immCurr.age(suite.currCounter++);
+                            },
+                            onComplete: function () {
+                                suite.immCurr.dispose();
+                            }
+                        },
+                        'ancient-oak': function () {
+                            suite.oak = suite.oak.set('age', suite.oakCounter++);
+                        },
+                        'immutable.js': function () {
+                            suite.immJs = suite.immJs.set('age', suite.immJsCounter++);
+                        },
+                        'previous version': function () {
+                            suite.immPrev = suite.immPrev.set('age', suite.prevCounter++);
+                        },
+                        'pojo': function () {
+                            suite.pojo = assign({}, suite.pojo);
+                            suite.pojo.age = suite.pojoCounter++;
+                            Object.freeze(suite.pojo);
+                        }
+                    }
+                };
+            suite.setup();
+        },
+        function (module, exports) {
+            'use strict';
+            var assign = _require(17);
+            var immutato_prev = _require(0);
+            var immutato = _require(6);
+            var Immutable = _require(16);
+            var AO = _require(10);
+            var suite = module.exports = {
+                    maxTime: 2,
+                    setup: function () {
+                        var i = 100;
+                        var payloadTypes = {
+                                name: immutato_prev.String,
+                                age: immutato_prev.Number
+                            };
+                        var payloadProps = {
+                                name: 'Andrea',
+                                age: 38
+                            };
+                        while (i--) {
+                            payloadTypes['field' + i] = immutato_prev.Number;
+                            payloadProps['field' + i] = i;
+                        }
+                        var Imm = immutato_prev.struct(payloadTypes, 'Person');
+                        var $f = immutato(payloadProps);
+                        suite.oak = AO(payloadProps);
                         suite.immPrev = new Imm(payloadProps);
                         suite.immCurr = $f(payloadProps);
                         suite.pojo = assign({}, payloadProps);
@@ -67,6 +255,7 @@
                         while (iterations--) {
                             suite.immCurr = suite.immCurr.age(iterations);
                             suite.immPrev = suite.immPrev.set('age', iterations);
+                            suite.oak = suite.oak.set('age', iterations);
                             suite.immJs = suite.immJs.set('age', iterations);
                             suite.pojo = assign({}, suite.pojo);
                             suite.pojo.age = iterations;
@@ -75,11 +264,19 @@
                     },
                     name: 'current vs prev version vs pojo -- read property after multiple changes',
                     tests: {
-                        'current version': function () {
-                            var name = suite.immCurr.name();
+                        'current version': {
+                            fn: function () {
+                                var name = suite.immCurr.name();
+                            },
+                            onComplete: function () {
+                                suite.immCurr.dispose();
+                            }
                         },
                         'immutable.js': function () {
                             var name = suite.immJs.get('name');
+                        },
+                        'ancient-oak': function () {
+                            var name = suite.oak('name');
                         },
                         'previous version': function () {
                             var name = suite.immPrev.name;
@@ -93,6 +290,514 @@
         },
         function (module, exports) {
             module.exports = __external_immutato;
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = numbers_keys;
+            function numbers_keys(bits) {
+                var width = 1 << bits;
+                var mask = width - 1;
+                return {
+                    zero: 0,
+                    split_key: function split_key(key, depth) {
+                        var parts = new Array(depth);
+                        for (var shift = (depth - 1) * bits, i = 0; shift >= 0; shift -= bits, ++i) {
+                            parts[i] = key >> shift & mask;
+                        }
+                        return parts;
+                    },
+                    merge_key: function merge_key(pre, key) {
+                        return (pre << bits) + key;
+                    },
+                    min_depth: function min_depth(key) {
+                        return Math.ceil(Math.log(key + 1) / Math.log(width));
+                    },
+                    new_node: function new_node() {
+                        return new Array(width);
+                    },
+                    new_dump: function new_dump() {
+                        return [];
+                    },
+                    copy: function copy_array(array) {
+                        return array ? array.concat([]) : new Array(width);
+                    },
+                    iterate: function iterate(array, fn) {
+                        if (array) {
+                            array.forEach(fn);
+                        }
+                    }
+                };
+            }
+            ;
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = storage;
+            var slice = _require(11);
+            function pass(value) {
+                return value;
+            }
+            function storage(options) {
+                var split_key = options.keys.split_key;
+                var merge_key = options.keys.merge_key;
+                var copy = options.keys.copy;
+                var new_node = options.keys.new_node;
+                var new_dump = options.keys.new_dump;
+                var min_depth = options.keys.min_depth;
+                var zero = options.keys.zero;
+                var iterate = options.keys.iterate;
+                var store = options.store;
+                var immutable = store.immutable;
+                var extend = options.extend || function () {
+                    };
+                var calc_props = options.props || function () {
+                    };
+                create.is_it = options.is_it;
+                Object.freeze(create);
+                return create;
+                function create(input) {
+                    var result = api();
+                    iterate(input, function (value, key) {
+                        result = result.set(key, store(value));
+                    });
+                    return result;
+                }
+                function api(data, depth, props) {
+                    depth = depth || 1;
+                    props = props || {};
+                    var set = modifier({
+                            name: 'set',
+                            descending: copy,
+                            leaf: set_value,
+                            ascending: set_child
+                        });
+                    var update = modifier({
+                            name: 'update',
+                            descending: copy,
+                            leaf: process_value,
+                            ascending: set_child
+                        });
+                    var modify_patch = modifier({
+                            name: 'patch',
+                            descending: copy,
+                            leaf: patch_value,
+                            ascending: set_child
+                        });
+                    var modify_rm = modifier({
+                            name: 'rm',
+                            descending: copy_only_existing,
+                            leaf: delete_key,
+                            ascending: set_child
+                        });
+                    get.data = data;
+                    get.depth = depth;
+                    get.dump = dump;
+                    get.json = json;
+                    get.set = set;
+                    get.update = update;
+                    get.patch = patch;
+                    get.rm = rm;
+                    get.forEach = forEach;
+                    get.reduce = reduce;
+                    get.map = map;
+                    get.filter = filter;
+                    extend(get, store);
+                    for (var name in props) {
+                        get[name] = props[name];
+                    }
+                    Object.freeze(get);
+                    return get;
+                    function get(key) {
+                        var key_depth = min_depth(key);
+                        if (key_depth > depth)
+                            return;
+                        var key_parts = split_key(key, depth);
+                        return key_parts.reduce(function (node, key_part) {
+                            return node && node[key_part];
+                        }, data);
+                    }
+                    function dump() {
+                        return reduce(function (result, value, key) {
+                            value = value && typeof value.dump === 'function' ? value.dump() : value;
+                            result[key] = value;
+                            return result;
+                        }, new_dump());
+                    }
+                    function json() {
+                        return JSON.stringify(dump());
+                    }
+                    function grow(dest_depth) {
+                        var root = copy(data);
+                        var levels = dest_depth - depth;
+                        var node;
+                        for (var i = 0; i < levels; ++i) {
+                            node = root;
+                            root = new_node();
+                            root[zero] = node;
+                        }
+                        return root;
+                    }
+                    function shrink(root, old_depth, new_props) {
+                        var elements = 0;
+                        iterate(root, function () {
+                            ++elements;
+                        });
+                        return elements === 1 && old_depth > 1 && zero in root ? shrink(root[zero], old_depth - 1, new_props) : elements === 0 ? api() : api(root, old_depth, new_props);
+                    }
+                    function patch(name, value) {
+                        if (typeof name === 'object') {
+                            var diff = name;
+                            var result = get;
+                            for (name in diff) {
+                                result = result.patch(name, diff[name]);
+                            }
+                            return result;
+                        } else {
+                            return modify_patch(name, value);
+                        }
+                        return result;
+                    }
+                    function rm(key) {
+                        if (arguments.length > 1) {
+                            var subargs = slice(arguments, 1);
+                            return update(key, function (node) {
+                                return node.rm.apply(null, subargs);
+                            });
+                        }
+                        var key_depth = min_depth(key);
+                        if (key_depth > depth)
+                            return get;
+                        return modify_rm(key);
+                    }
+                    function modifier(actions) {
+                        var name = actions.name;
+                        var descending_action = actions.descending;
+                        var leaf_action = actions.leaf;
+                        var ascending_action = actions.ascending;
+                        return function modify(key, value) {
+                            var new_depth = Math.max(min_depth(key), depth);
+                            var key_parts = split_key(key, new_depth);
+                            var length = new_depth - 1;
+                            var root = grow(new_depth);
+                            var i, parent;
+                            var path = new Array(length);
+                            var node = root;
+                            for (i = 0; i < length; ++i) {
+                                path[i] = node;
+                                node = descending_action(node[key_parts[i]]);
+                            }
+                            leaf_action(node, key_parts[i], value);
+                            Object.freeze(node);
+                            for (i = length - 1; i >= 0; --i) {
+                                parent = path[i];
+                                ascending_action(parent, key_parts[i], node);
+                                node = parent;
+                                Object.freeze(parent);
+                            }
+                            var new_props = calc_props(props, name, key);
+                            return shrink(root, new_depth, new_props);
+                        };
+                    }
+                    function map(fn) {
+                        return reduce(function (result, value, key) {
+                            return result.set(key, fn(value, key, get));
+                        }, api());
+                    }
+                    function reduce(fn, init) {
+                        var result = init;
+                        forEach(function (value, key) {
+                            result = fn(result, value, key, get);
+                        });
+                        return result;
+                    }
+                    function filter(fn) {
+                        return reduce(function (result, value, key) {
+                            return fn(value, key) ? result.set(key, value) : result;
+                        }, api());
+                    }
+                    function forEach(fn) {
+                        for_recur(data, zero, 1, fn);
+                        return get;
+                    }
+                    function for_recur(node, key_pre, level, fn) {
+                        var invoke = level === depth;
+                        iterate(node, function (child, key) {
+                            var key_full = merge_key(key_pre, key);
+                            if (invoke) {
+                                fn(child, key_full, get);
+                            } else {
+                                for_recur(child, key_full, level + 1, fn);
+                            }
+                        });
+                    }
+                }
+                function copy_only_existing(node) {
+                    return node ? copy(node) : null;
+                }
+                function delete_key(node, key_part) {
+                    if (node)
+                        delete node[key_part];
+                }
+                function set_child(parent, key_part, child) {
+                    if (!parent)
+                        return;
+                    if (is_empty(child)) {
+                        delete parent[key_part];
+                    } else {
+                        parent[key_part] = child;
+                    }
+                }
+                function set_value(node, key_part, value) {
+                    node[key_part] = store(value);
+                }
+                function process_value(node, key_part, fn) {
+                    node[key_part] = store(fn(node[key_part]));
+                }
+                function patch_value(node, key_part, value) {
+                    var old = node[key_part];
+                    if (immutable(value)) {
+                        old = store(value);
+                    } else if (old && old.patch) {
+                        old = old.patch(value);
+                    } else {
+                        old = store(value);
+                    }
+                    node[key_part] = old;
+                }
+                function is_empty(node) {
+                    if (!node)
+                        return true;
+                    var empty = true;
+                    iterate(node, function () {
+                        empty = false;
+                    });
+                    return empty;
+                }
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = string_keys;
+            function string_keys(width) {
+                return {
+                    zero: '',
+                    split_key: function split_key(key, depth) {
+                        key = key.toString();
+                        var parts = new Array(depth);
+                        var padding = depth - min_depth(key);
+                        var i, k;
+                        for (i = 0; i < padding; ++i) {
+                            parts[i] = '';
+                        }
+                        for (k = 0; i < depth; ++i, ++k) {
+                            parts[i] = key.substr(k * width, width);
+                        }
+                        return parts;
+                    },
+                    merge_key: function merge_key(pre, key) {
+                        return pre + key;
+                    },
+                    min_depth: min_depth,
+                    new_node: new_object,
+                    new_dump: new_object,
+                    copy: function copy_object(object) {
+                        var result = {};
+                        for (var prop in object) {
+                            result[prop] = object[prop];
+                        }
+                        return result;
+                    },
+                    iterate: function iterate(object, fn) {
+                        for (var prop in object) {
+                            fn(object[prop], prop, object);
+                        }
+                    }
+                };
+                function new_object() {
+                    return {};
+                }
+                function min_depth(key) {
+                    return Math.ceil(key.toString().length / width);
+                }
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            var ARRAY_KEY_BITS = 5;
+            var HASH_KEY_WIDTH = 2;
+            store.immutable = immutable;
+            module.exports = store;
+            var storages = [
+                    _require(15),
+                    _require(13),
+                    _require(12)(ARRAY_KEY_BITS, store),
+                    _require(14)(HASH_KEY_WIDTH, store)
+                ];
+            function storage_for(value) {
+                var i;
+                var length = storages.length;
+                for (i = 0; i < length && !storages[i].is_it(value); ++i);
+                return i < length ? storages[i] : null;
+            }
+            function immutable(value) {
+                return !storage_for(value);
+            }
+            function store(value) {
+                var storage = storage_for(value);
+                return storage ? storage(value) : value;
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = slice;
+            var _slice = Array.prototype.slice;
+            function slice(array, begin, end) {
+                return _slice.call(array, begin, end);
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = array_storage_config;
+            function array_storage_config(bits, store) {
+                var number_keys = _require(7);
+                var storage = _require(8);
+                return storage({
+                    keys: number_keys(bits),
+                    is_it: is_it,
+                    store: store,
+                    extend: extend,
+                    props: props
+                });
+            }
+            function is_it(value) {
+                return value instanceof Array;
+            }
+            function props(old_props, action, key) {
+                var size = old_props.size || 0;
+                if (typeof key === 'string') {
+                    key = parseInt(key, 10);
+                }
+                size = Math.max(size, key + 1);
+                return { size: size };
+            }
+            function extend(api, store) {
+                api.push = push;
+                api.pop = pop;
+                api.filter = filter;
+                api.slice = slice;
+                api.size = 0;
+                function push(value) {
+                    return api.set(api.size, value);
+                }
+                function filter(fn) {
+                    return api.reduce(function (result, value, key) {
+                        return fn(value, key) ? result.push(value) : result;
+                    }, store([]));
+                }
+                function slice(start, end) {
+                    if (arguments.length === 1) {
+                        end = api.size;
+                    } else if (end < 0) {
+                        end = api.size + end;
+                    }
+                    return api.filter(function (_, key) {
+                        return key >= start && key < end;
+                    });
+                }
+                function pop() {
+                    return slice(0, -1);
+                }
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            store.is_it = is_it;
+            module.exports = store;
+            var slice = _require(11);
+            function is_it(value) {
+                return value instanceof Date;
+            }
+            function store(date) {
+                var value = date.valueOf();
+                date = null;
+                get.value = value;
+                get.dump = dump;
+                get.json = json;
+                get.set = set;
+                get.update = update;
+                get.patch = patch;
+                Object.freeze(get);
+                return get;
+                function get(field) {
+                    if (!date)
+                        date = dump();
+                    var method = 'get' + camel_case(field);
+                    return date[method]();
+                }
+                function set(field) {
+                    var method = 'set' + camel_case(field);
+                    var args = slice(arguments, 1);
+                    var new_date = dump();
+                    new_date[method].apply(new_date, args);
+                    return store(new_date);
+                }
+                function update(field, modify) {
+                    var prop = camel_case(field);
+                    var set_method = 'set' + prop;
+                    var get_method = 'get' + prop;
+                    var new_date = dump();
+                    var field_value = modify(new_date[get_method]());
+                    new_date[set_method](field_value);
+                    return store(new_date);
+                }
+                function patch(fields) {
+                    var new_date = dump();
+                    Object.keys(fields).forEach(function (field) {
+                        var method = 'set' + camel_case(field);
+                        var value = fields[field];
+                        new_date[method](value);
+                    });
+                    return store(new_date);
+                }
+                function dump() {
+                    return new Date(value);
+                }
+                function json() {
+                    return JSON.stringify(dump());
+                }
+                function camel_case(field) {
+                    return field.replace(/utc|_.|^./g, function (str) {
+                        return str.toUpperCase();
+                    }).replace(/_/g, '');
+                }
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = hash_storage_config;
+            function hash_storage_config(width, store) {
+                var string_keys = _require(9);
+                var storage = _require(8);
+                return storage({
+                    keys: string_keys(width),
+                    is_it: is_it,
+                    store: store
+                });
+            }
+            function is_it(value) {
+                return typeof value === 'object';
+            }
+        },
+        function (module, exports) {
+            'use strict';
+            module.exports = storage;
+            storage.is_it = is_it;
+            function storage(value) {
+                return value;
+            }
+            function is_it(value) {
+                return value === null || value === undefined || typeof value !== 'object';
+            }
         },
         function (module, exports) {
             function universalModule() {

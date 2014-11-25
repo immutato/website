@@ -22,16 +22,16 @@
     _require.cache = [];
     _require.modules = [function (module, exports) {
             'use strict';
+            var THRESHOLD = 100;
             var I = function () {
                     var cacheCount = 300;
                     var caches = [];
                     function buildPropertyIndexes(keysLength) {
-                        var propertyIndexes = {};
+                        var propertyIndexes = new Array(keysLength);
                         var i = keysLength;
                         while (i--) {
                             propertyIndexes[i] = 0;
                         }
-                        propertyIndexes.indexGeneration = 0;
                         return propertyIndexes;
                     }
                     var k = cacheCount;
@@ -72,13 +72,15 @@
                         var transactionsForClass = opts.transactionsForClass;
                         var Contructor = opts.Contructor;
                         var transactions = transactionsForClass[instanceId];
+                        var keysLength = opts.keysLength;
                         var newTransaction = new Array(propertyIndex + 1);
                         newTransaction[propertyIndex] = value;
                         transactions.push(newTransaction);
-                        var newPropertyIndexes;
-                        var propertyIndexDescriptor = {};
-                        propertyIndexDescriptor[propertyIndex] = { value: transactions.length - 1 };
-                        newPropertyIndexes = create(propertyIndexes, propertyIndexDescriptor);
+                        var newPropertyIndexes = new Array(keysLength);
+                        var i = keysLength;
+                        while (i--) {
+                            newPropertyIndexes[i] = propertyIndexes[i];
+                        }
                         return new Contructor(newPropertyIndexes, instanceId);
                     }
                     function mkGetterSetter(opts) {
@@ -94,7 +96,11 @@
                         var keys = Object.keys(dataSample);
                         var keysLength = keys.length;
                         var transactionsForClass = [];
-                        var Proto = {};
+                        var Proto = {
+                                dispose: function () {
+                                    transactionsForClass[this.instanceId] = null;
+                                }
+                            };
                         var i = keysLength;
                         var clonedData = {};
                         while (i--) {
